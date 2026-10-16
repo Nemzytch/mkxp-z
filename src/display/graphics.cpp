@@ -1330,7 +1330,10 @@ int Graphics::width() const { return p->scRes.x; }
 
 int Graphics::height() const { return p->scRes.y; }
 
-void Graphics::resizeScreen(int width, int height) {
+/* keepWindow: change the game resolution without resizing the window; the
+ * image is scaled to the current window instead. Without it, the original
+ * behavior is unchanged. */
+void Graphics::resizeScreen(int width, int height, bool keepWindow) {
     p->threadData->rqWindowAdjust.wait();
     p->checkResize(true);
     
@@ -1343,8 +1346,12 @@ void Graphics::resizeScreen(int width, int height) {
     
     p->screen.setResolution(width, height);
     
-    if (p->integerScaleActive)
+    if (p->integerScaleActive) {
+        /* window unchanged: the integer factor depends on the new resolution */
+        if (keepWindow)
+            p->findHighestIntegerScale();
         p->rebuildIntegerScaleBuffer();
+    }
     
     TEXFBO::allocEmpty(p->frozenScene, width, height);
     
@@ -1352,6 +1359,16 @@ void Graphics::resizeScreen(int width, int height) {
     p->screenQuad.setTexPosRect(screenRect, screenRect);
     
     glState.scissorBox.set(IntRect(0, 0, p->scRes.x, p->scRes.y));
+    
+    if (keepWindow) {
+        /* Same computation as on a window resize, with the current window:
+         * image position/size and mouse ratio */
+        p->recalculateScreenSize(p->threadData);
+        p->updateScreenResoRatio(p->threadData);
+        SDL_Rect screen = {p->scOffset.x, p->scOffset.y, p->scSize.x, p->scSize.y};
+        p->threadData->ethread->notifyGameScreenChange(screen);
+        return;
+    }
     
     shState->eThread().requestWindowResize(width, height);
 }

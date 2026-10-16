@@ -58,7 +58,7 @@ public:
 
 	int width() const;
 	int height() const;
-	void resizeScreen(int width, int height);
+	void resizeScreen(int width, int height, bool keepWindow = false);
     void resizeWindow(int width, int height, bool center=false);
 	void drawMovieFrame(const THEORAPLAY_VideoFrame* video, Bitmap *videoBitmap);
 	bool updateMovieInput(Movie *movie);

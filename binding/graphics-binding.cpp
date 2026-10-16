@@ -232,10 +232,11 @@ RB_METHOD(graphicsResizeScreen)
     RB_UNUSED_PARAM;
     
     int width, height;
-    rb_get_args(argc, argv, "ii", &width, &height RB_ARG_END);
+    bool keepWindow = false;
+    rb_get_args(argc, argv, "ii|b", &width, &height, &keepWindow RB_ARG_END);
     
     GFX_LOCK;
-    shState->graphics().resizeScreen(width, height);
+    shState->graphics().resizeScreen(width, height, keepWindow);
     GFX_UNLOCK;
     
     return Qnil;
@@ -389,6 +390,8 @@ void graphicsBindingInit()
     _rb_define_module_function(module, "snap_to_bitmap", graphicsSnapToBitmap);
     _rb_define_module_function(module, "resize_screen", graphicsResizeScreen);
     _rb_define_module_function(module, "resize_window", graphicsResizeWindow);
+    /* Lets scripts know that resize_screen(w, h, true) keeps the window size */
+    rb_define_const(module, "KEEP_WINDOW", Qtrue);
     _rb_define_module_function(module, "center", graphicsCenter);
         
     INIT_GRA_PROP_BIND( Brightness, "brightness" );
