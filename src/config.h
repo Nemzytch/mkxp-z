@@ -42,6 +42,8 @@ struct Config {
     bool winResizable;
     bool fullscreen;
     bool fixedAspectRatio;
+    /* Start with the window size the game had when it was last closed */
+    bool rememberWindow;
     bool smoothScaling;
     bool vsync;
     

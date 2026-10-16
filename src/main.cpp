@@ -35,6 +35,7 @@
 #include <string>
 #include <unistd.h>
 #include <regex>
+#include <fstream>
 
 #include "binding.h"
 #include "sharedstate.h"
@@ -339,6 +340,18 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
     
+    /* rememberWindow: open directly at the size of the last session, so the
+     * window does not change size while the game starts */
+    const std::string winSizeFile = conf.customDataPath + "/window-size.txt";
+    if (conf.rememberWindow && !conf.fullscreen) {
+      std::ifstream in(winSizeFile);
+      int w = 0, h = 0;
+      if (in >> w >> h && w >= 160 && h >= 120 && w <= 8192 && h <= 8192) {
+        conf.defScreenW = w;
+        conf.defScreenH = h;
+      }
+    }
+
     win = SDL_CreateWindow(conf.windowTitle.c_str(), SDL_WINDOWPOS_UNDEFINED,
                            SDL_WINDOWPOS_UNDEFINED, conf.defScreenW,
                            conf.defScreenH, winFlags);
@@ -428,6 +441,14 @@ int main(int argc, char *argv[]) {
 
     /* Start event processing */
     eventThread.process(rtData);
+
+    if (conf.rememberWindow &&
+        !(SDL_GetWindowFlags(win) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MINIMIZED))) {
+      int w, h;
+      SDL_GetWindowSize(win, &w, &h);
+      std::ofstream out(winSizeFile);
+      out << w << " " << h << "\n";
+    }
 
     /* Request RGSS thread to stop */
     rtData.rqTerm.set();
