@@ -13,12 +13,16 @@ LIBDIR := $(BUILD_PREFIX)/lib
 INCLUDEDIR := $(BUILD_PREFIX)/include
 DOWNLOADS := ${PWD}/downloads/$(ARCH)
 NPROC := $(shell nproc)
-CFLAGS := -I$(INCLUDEDIR) -O3
+CFLAGS := -I$(INCLUDEDIR) -O3 -std=gnu17 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=int-conversion
 LDFLAGS := -L$(LIBDIR)
 CC      := gcc
 PKG_CONFIG_LIBDIR := $(BUILD_PREFIX)/lib/pkgconfig
 GIT := git
 CLONE := $(GIT) clone -q
+# Dependency sources pinned to this date
+DEPS_DATE := 2022-11-30
+# CMake 4: accept older CMakeLists (subprojects included)
+export CMAKE_POLICY_VERSION_MINIMUM := 3.5
 GITHUB := https://github.com
 
 CONFIGURE_ENV := \
@@ -32,6 +36,8 @@ CMAKE_ARGS := \
 	-DCMAKE_PREFIX_PATH="$(BUILD_PREFIX)" \
 	-DCMAKE_C_FLAGS="$(CFLAGS)" \
 	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+	-DCMAKE_CXX_FLAGS="-include cstdint" \
 	-G "MSYS Makefiles"
 
 RUBY_CONFIGURE_ARGS := \
@@ -65,7 +71,8 @@ $(DOWNLOADS)/theora/configure: $(DOWNLOADS)/theora/autogen.sh
 	./autogen.sh
 
 $(DOWNLOADS)/theora/autogen.sh:
-	$(CLONE) $(GITHUB)/xiph/theora $(DOWNLOADS)/theora
+	$(CLONE) $(GITHUB)/xiph/theora $(DOWNLOADS)/theora; \
+	cd $(DOWNLOADS)/theora && $(GIT) checkout -q $$($(GIT) rev-list -n 1 --before=$(DEPS_DATE) HEAD)
 
 # Vorbis
 libvorbis: init_dirs libogg $(LIBDIR)/libvorbis.a
@@ -133,7 +140,8 @@ $(DOWNLOADS)/physfs/cmakebuild/Makefile: $(DOWNLOADS)/physfs/CMakeLists.txt
 	$(CMAKE) -DPHYSFS_BUILD_STATIC=true -DPHYSFS_BUILD_SHARED=false
 
 $(DOWNLOADS)/physfs/CMakeLists.txt:
-	$(CLONE) $(GITHUB)/mkxp-z/physfs $(DOWNLOADS)/physfs
+	$(CLONE) $(GITHUB)/mkxp-z/physfs $(DOWNLOADS)/physfs; \
+	cd $(DOWNLOADS)/physfs && $(GIT) checkout -q $$($(GIT) rev-list -n 1 --before=$(DEPS_DATE) HEAD)
 
 # libpng
 libpng: init_dirs $(LIBDIR)/libpng.a
@@ -177,7 +185,8 @@ $(DOWNLOADS)/uchardet/cmakebuild/Makefile: $(DOWNLOADS)/uchardet/CMakeLists.txt
 	$(CMAKE) -DBUILD_SHARED_LIBS=no
 
 $(DOWNLOADS)/uchardet/CMakeLists.txt:
-	$(CLONE) $(GITHUB)/freedesktop/uchardet $(DOWNLOADS)/uchardet
+	$(CLONE) https://gitlab.freedesktop.org/uchardet/uchardet.git $(DOWNLOADS)/uchardet; \
+	cd $(DOWNLOADS)/uchardet && $(GIT) checkout -q $$($(GIT) rev-list -n 1 --before=$(DEPS_DATE) HEAD)
 
 # SDL2
 sdl2: init_dirs $(LIBDIR)/libSDL2.a
@@ -265,7 +274,8 @@ $(DOWNLOADS)/freetype/configure: $(DOWNLOADS)/freetype/autogen.sh
 	cd $(DOWNLOADS)/freetype; ./autogen.sh
 
 $(DOWNLOADS)/freetype/autogen.sh:
-	$(CLONE) $(GITHUB)/mkxp-z/freetype2 $(DOWNLOADS)/freetype
+	$(CLONE) $(GITHUB)/mkxp-z/freetype2 $(DOWNLOADS)/freetype; \
+	cd $(DOWNLOADS)/freetype && $(GIT) checkout -q $$($(GIT) rev-list -n 1 --before=$(DEPS_DATE) HEAD)
 
 # OpenAL
 openal: init_dirs libogg $(LIBDIR)/libOpenAL32.a
@@ -305,6 +315,7 @@ $(DOWNLOADS)/openssl/Makefile: $(DOWNLOADS)/openssl/Configure
 	cd $(DOWNLOADS)/openssl; \
 	./Configure $(OPENSSL_FLAGS) \
 	no-shared \
+	-std=gnu17 -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=int-conversion \
 	--prefix="$(BUILD_PREFIX)" \
 	--openssldir="$(BUILD_PREFIX)"
 
@@ -320,7 +331,7 @@ $(BUILD_PREFIX)/$(RB_PREFIX)-ruby310.dll: $(DOWNLOADS)/ruby/Makefile
 
 $(DOWNLOADS)/ruby/Makefile: $(DOWNLOADS)/ruby/configure
 	cd $(DOWNLOADS)/ruby; \
-	$(CONFIGURE) $(RUBY_CONFIGURE_ARGS) $(RUBY_FLAGS)
+	$(CONFIGURE) $(RUBY_CONFIGURE_ARGS) $(RUBY_FLAGS) CFLAGS="$(CFLAGS) -DWIN_PTHREADS_TIME_H"
 
 $(DOWNLOADS)/ruby/configure: $(DOWNLOADS)/ruby/*.c
 	cd $(DOWNLOADS)/ruby; autoreconf -i
